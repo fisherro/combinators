@@ -1,8 +1,9 @@
+#include <algorithm>
 #include <functional>
 #include <numeric>
+#include <print>
 #include <string>
 #include <vector>
-#include <print>
 
 #define TEST(expr, expected) \
     do { \
@@ -10,7 +11,7 @@
         bool passed = (result == (expected)); \
         std::string status = passed ? "PASS" : "FAIL"; \
         std::string op = passed ? "==" : "!="; \
-        std::print("[{}] {}: {} {} {}\n", status, #expr, result, op, expected); \
+        std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected); \
     } while (0)
 
 auto I = [](auto x) { return x; };
@@ -28,9 +29,8 @@ int main()
 {
     TEST(S(K, K)(42), 42);
 
-    auto sum = [](auto ns) { return std::accumulate(std::begin(ns), std::end(ns), 0); };
-    auto size = [](auto ns) { return ns.size(); };
-    auto avg = PHI(std::divides<double>{}, sum, size);
+    auto sum = [](auto ns) { return std::ranges::fold_left(ns, 0, std::plus<int>{}); };
+    auto avg = PHI(std::divides<double>{}, sum, std::ranges::size);
     TEST(avg(std::vector{1, 2, 3, 4}), 5. / 2.);
 
     auto make_tuple = [](auto... args) { return std::make_tuple(args...); };
