@@ -35,6 +35,8 @@ int main()
 
     auto make_tuple = [](auto... args) { return std::make_tuple(args...); };
     auto plus_or_minus = PHI(make_tuple, std::plus<int>{}, std::minus<int>{});
+
+    // Can't format tuples. u_u
 #if 0
     TEST(plus_or_minus(10, 5), make_tuple(15, 5));
 #else
