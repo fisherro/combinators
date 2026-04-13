@@ -69,6 +69,8 @@
 (define string-sort
   (B list->string (PHI sort string->list (K char<?))))
 (define intersect (cut lset-intersection equal? <> <>))
+(define (safe-string-cursor=? a b)
+  (and a b (string-cursor=? a b)))
 
 ;; Examples
 (test (S K K 10) 10)
@@ -99,6 +101,6 @@
 (test (disjoint? '(1 2) '(3 4 5)) #t)
 (test (disjoint? '(2 3) '(3 4 5)) #f)
 
-(define prefix-of? (PHI string-cursor=? (B string-cursor-start K) (C string-contains)))
+(define prefix-of? (PHI safe-string-cursor=? (B string-cursor-start (C K)) (C string-contains)))
 (test (prefix-of? "cat" "catch") #t)
 (test (prefix-of? "dog" "catch") #f)
