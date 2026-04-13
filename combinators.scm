@@ -48,6 +48,7 @@
 (define string-reverse (B list->string (B reverse string->list)))
 (define string-sort
   (B list->string (phi string->list sort (K char<?))))
+(define intersect (cut lset-intersection equal? <> <>))
 
 ;; Examples
 (define avg (phi sum / length))
@@ -71,8 +72,8 @@
 (show (isAnagram "owls" "slow"))
 (show (isAnagram "cats" "dogs"))
 
-;(define isDisjoint (phi '() equal? lset-intersection))
-(define isDisjoint (B null? (cut lset-intersection equal? <> <>)))
+;(define isDisjoint (phi '() equal? intersect))
+(define isDisjoint (B null? intersect))
 (show (isDisjoint '(1 2) '(3 4 5)))
 (show (isDisjoint '(2 3) '(3 4 5)))
 
