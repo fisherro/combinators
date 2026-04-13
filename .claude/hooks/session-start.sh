@@ -8,3 +8,9 @@ fi
 if ! command -v chibi-scheme &> /dev/null; then
   apt-get install -y chibi-scheme
 fi
+
+if ! command -v g++-14 &> /dev/null; then
+  apt-get install -y g++-14
+fi
+
+update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 200
