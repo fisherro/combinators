@@ -111,4 +111,4 @@
 
 (test (D string-append string-upcase "hello " "world") "hello WORLD")
 
-(test (D2 string-append string-upcase string-downcase "hello" "WORLD") "HELLOworld")
+(test (D2 string-append string-upcase string-downcase "hello " "WORLD") "HELLO world")
