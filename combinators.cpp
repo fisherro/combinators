@@ -1,9 +1,29 @@
 #include <algorithm>
+#include <format>
 #include <functional>
 #include <numeric>
 #include <print>
 #include <string>
+#include <tuple>
 #include <vector>
+
+template<typename... Ts>
+struct std::formatter<std::tuple<Ts...>> {
+    constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+
+    auto format(const std::tuple<Ts...>& t, std::format_context& ctx) const {
+        auto out = ctx.out();
+        *out++ = '(';
+        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            ([&] {
+                if constexpr (Is > 0) out = std::format_to(out, ", ");
+                out = std::format_to(out, "{}", std::get<Is>(t));
+            }(), ...);
+        }(std::index_sequence_for<Ts...>{});
+        *out++ = ')';
+        return out;
+    }
+};
 
 #define TEST(expr, expected) \
     do { \
@@ -36,14 +56,7 @@ int main()
     auto make_tuple = [](auto... args) { return std::make_tuple(args...); };
     auto plus_or_minus = PHI(make_tuple, std::plus<int>{}, std::minus<int>{});
 
-    // Can't format tuples. u_u
-#if 0
     TEST(plus_or_minus(10, 5), make_tuple(15, 5));
-#else
-    auto [plus_result, minus_result] = plus_or_minus(10, 5);
-    TEST(plus_result, 15);
-    TEST(minus_result, 5);
-#endif
 
     auto abs = [](auto x) { return std::abs(x); };
     auto abs_diff = B(abs, std::minus<int>{});
