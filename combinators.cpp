@@ -1,10 +1,7 @@
-#include <format>
 #include <functional>
-#include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
-
 #include <print>
 
 #define TEST(expr, expected) \
@@ -12,9 +9,8 @@
         auto result = (expr); \
         bool passed = (result == (expected)); \
         std::string status = passed ? "PASS" : "FAIL"; \
-        std::ostream& out = passed ? std::cout : std::cerr; \
         std::string op = passed ? "==" : "!="; \
-        out << std::format("[{}] {}: {} {} {}\n", status, #expr, result, op, expected); \
+        std::print("[{}] {}: {} {} {}\n", status, #expr, result, op, expected); \
     } while (0)
 
 auto I = [](auto x) { return x; };
