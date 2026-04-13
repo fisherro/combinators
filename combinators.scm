@@ -1,7 +1,9 @@
-#lang racket/base
-(require racket/set)
-(require racket/function)
+;#lang racket/base
+;(require racket/set)
+;(require racket/function)
 ;(require srfi/26)
+(import (scheme base)
+        (scheme case-lambda))
 
 ;;; Inspired by
 ;;; Combinatory Logic and Combinators in Array Languages
@@ -26,7 +28,7 @@
          ((param ...) (lambda rest body))
          ((param ... . rest) (apply (name param ...) rest))))]))
 
-
+#|
 (define-syntax-rule (show expr)
   (printf "~a: ~a~n" 'expr expr))
 
@@ -99,3 +101,4 @@
 ;(show (isPrefixOf "dog" "catch"))
 
 (show (S K K 10))
+|#
