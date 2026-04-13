@@ -59,10 +59,11 @@
 ; \abcde.ab(cde)
 ;(define-combinator E (f g h) (x y) (f g (h x y)))
 
-; I: identity
-; K: const
-; B: compose
-; C: flip
+;; Friendlier aliases
+(define identity I)
+(define const K)
+(define compose B)
+(define flip C)
 
 ;; Helpers
 (define (sum lyst) (apply + lyst))
