@@ -88,7 +88,7 @@
 (test (palindrome1? "tacocat") #t)
 (test (palindrome2? "tacocat") #t)
 (test (palindrome1? "tacodog") #f)
-(test (palindrome2? "tacodag") #f)
+(test (palindrome2? "tacodog") #f)
 
 (define anagram? (PSI equal? string-sort))
 (test (anagram? "owls" "slow") #t)
