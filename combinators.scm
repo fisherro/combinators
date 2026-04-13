@@ -2,8 +2,8 @@
         (scheme case-lambda)
         (scheme write)
         (srfi 1)
+        (srfi 26)
         (srfi 95))
-; (srfi 16)
 
 ;;; Inspired by
 ;;; Combinatory Logic and Combinators in Array Languages
@@ -35,14 +35,11 @@
 (define (I x) x)
 (define-combinator K (x) (y) x)
 (define-combinator S (f g) (x) (f x (g x)))
-(define-combinator B (f g) (x) (f (g x)))
-(define-combinator B1 (f g) (x y) (f (g x y)))
-(define-combinator B* (f g) args (f (apply g args)))
+(define-combinator B (f g) args (f (apply g args)))
 (define-combinator C (f) (x y) (f y x))
 (define-combinator W (f) (x) (f x x))
 (define-combinator psi (f g) (x y) (f (g x) (g y)))
-(define-combinator phi (f g h) (x) (g (f x) (h x)))
-(define-combinator phi1 (f g h) (x y) (g (f x y) (h x y)))
+(define-combinator phi (f g h) args (g (apply f args) (apply h args)))
 (define-combinator D (f g) (x y) (f x (g y)))
 (define-combinator D2 (f g h) (x y) (g (f x) (h y)))
 
@@ -56,10 +53,10 @@
 (define avg (phi sum / length))
 (show (avg '(1 2 3 4)))
 
-(define plusOrMinus (phi1 + list -))
+(define plusOrMinus (phi + list -))
 (show (plusOrMinus 10 5))
 
-(define absoluteDifference (B1 abs -))
+(define absoluteDifference (B abs -))
 (show (absoluteDifference 10 7))
 (show (absoluteDifference 7 10))
 
@@ -74,12 +71,12 @@
 (show (isAnagram "owls" "slow"))
 (show (isAnagram "cats" "dogs"))
 
-;(define isDisjoint (phi1 '() equal? lset-intersection))
-(define isDisjoint (B1 null? lset-intersection))
+;(define isDisjoint (phi '() equal? lset-intersection))
+(define isDisjoint (B null? (cut lset-intersection equal? <> <>)))
 (show (isDisjoint '(1 2) '(3 4 5)))
 (show (isDisjoint '(2 3) '(3 4 5)))
 
-;(define isPrefixOf (B1 first find))
+;(define isPrefixOf (B first find))
 ;(show (isPrefixOf "cat" "catch"))
 ;(show (isPrefixOf "dog" "catch"))
 
