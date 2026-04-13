@@ -56,7 +56,7 @@
 (define-combinator D (f g) (x y) (f x (g y)))
 (define-combinator D2 (f g h) (x y) (f (g x) (h y)))
 ; \abcde.ab(cde)
-;(define-combinator E (f g h) (x y) (f (g (h d e))))
+;(define-combinator E (f g h) (x y) (f g (h x y)))
 
 ; I: identity
 ; K: const
