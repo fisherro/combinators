@@ -16,51 +16,11 @@
 auto I = [](auto x) { return x; };
 auto K = [](auto x) { return [=](auto y) { return x; }; };
 auto S = [](auto f, auto g) { return [=](auto x) { return f(x)(g(x)); }; };
-
-//TODO: Make B variadic.
-template <typename F, typename G>
-struct B_helper {
-    B_helper(F f, G g) : f(f), g(g) {}
-    template <typename... Args>
-    auto operator()(Args&&... args) const {
-        // Should std::forward.
-        return f(g(args...));
-    }
-private:
-    F f;
-    G g;
-};
-auto B = [](auto f, auto g) { return B_helper(f, g); };
-
+auto B = [](auto f, auto g) { return [=](auto... args) { return f(g(args...)); }; };
 auto C = [](auto f) { return [=](auto x, auto y) { return f(y, x); }; };
 auto W = [](auto f) { return [=](auto x) { return f(x, x); }; };
 auto PSI = [](auto f, auto g) { return [=](auto x, auto y) { return f(g(x), g(y)); }; };
-
-#if 0
-auto PHI = [](auto f, auto g, auto h) {
-    return [=](auto... x) {
-        return f(g(x...), h(x...));
-    };
-};
-#else
-template <typename F, typename G, typename H>
-struct PHI_helper {
-    PHI_helper(F f, G g, H h) : f(f), g(g), h(h) {}
-    template <typename... Args>
-    auto operator()(Args&&... args) const {
-        // Should std::forward.
-        return f(g(args...), h(args...));
-    }
-private:
-    F f;
-    G g;
-    H h;
-};
-auto PHI = [](auto f, auto g, auto h) {
-    return PHI_helper(f, g, h);
-};
-#endif
-
+auto PHI = [](auto f, auto g, auto h) { return [=](auto... x) { return f(g(x...), h(x...)); }; };
 auto D = [](auto f, auto g) { return [=](auto x, auto y) { return f(x, g(y)); }; };
 auto D2 = [](auto f, auto g, auto h) { return [=](auto x, auto y) { return f(g(x), h(y)); }; };
 
