@@ -50,8 +50,8 @@
 (define-combinator B (f g) args (f (apply g args)))
 (define-combinator C (f) (x y) (f y x))
 (define-combinator W (f) (x) (f x x))
-(define-combinator psi (f g) (x y) (f (g x) (g y)))
-(define-combinator phi (f g h) args (g (apply f args) (apply h args)))
+(define-combinator PSI (f g) (x y) (f (g x) (g y)))
+(define-combinator PHI (f g h) args (g (apply f args) (apply h args)))
 (define-combinator D (f g) (x y) (f x (g y)))
 (define-combinator D2 (f g h) (x y) (g (f x) (h y)))
 
@@ -59,34 +59,34 @@
 (define (sum lyst) (apply + lyst))
 (define string-reverse (B list->string (B reverse string->list)))
 (define string-sort
-  (B list->string (phi string->list sort (K char<?))))
+  (B list->string (PHI string->list sort (K char<?))))
 (define intersect (cut lset-intersection equal? <> <>))
 
 ;; Examples
 (test (S K K 10) 10)
 
-(define avg (phi sum / length))
+(define avg (PHI sum / length))
 (test (avg '(1 2 3 4)) 5/2)
 
-(define plusOrMinus (phi + list -))
+(define plusOrMinus (PHI + list -))
 (test (plusOrMinus 10 5) '(15 5))
 
 (define absoluteDifference (B abs -))
 (test (absoluteDifference 10 7) 3)
 (test (absoluteDifference 7 10) 3)
 
-(define isPalindrome1 (phi string-reverse equal? I))
+(define isPalindrome1 (PHI string-reverse equal? I))
 (define isPalindrome2 (S equal? string-reverse))
 (test (isPalindrome1 "tacocat") #t)
 (test (isPalindrome2 "tacocat") #t)
 (test (isPalindrome1 "tacodog") #f)
 (test (isPalindrome2 "tacodag") #f)
 
-(define isAnagram (psi equal? string-sort))
+(define isAnagram (PSI equal? string-sort))
 (test (isAnagram "owls" "slow") #t)
 (test (isAnagram "cats" "dogs") #f)
 
-;(define isDisjoint (phi '() equal? intersect))
+;(define isDisjoint (PHI '() equal? intersect))
 (define isDisjoint (B null? intersect))
 (test (isDisjoint '(1 2) '(3 4 5)) #t)
 (test (isDisjoint '(2 3) '(3 4 5)) #f)
