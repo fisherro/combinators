@@ -1,5 +1,6 @@
 (import (scheme base)
         (scheme case-lambda)
+        (scheme write)
         (srfi 1))
 ; (srfi 16)
 
@@ -20,8 +21,14 @@
          ((param ...) (lambda rest body))
          ((param ... . rest) (apply (name param ...) rest)))))))
 
-(define-syntax-rule (show expr)
-  (printf "~a: ~a~n" 'expr expr))
+(define-syntax show
+  (syntax-rules ()
+    ((_ expr)
+     (begin
+      (write 'expr)
+      (display ": ")
+      (display expr)
+      (newline)))))
 
 ;; Combinators
 (define (I x) x)
