@@ -9,16 +9,16 @@
 
 (define-syntax define-combinator
   (syntax-rules ()
-    [(_ name (param ...) (arg ...) body)
+    ((_ name (param ...) (arg ...) body)
      (define name
        (case-lambda
          ((param ...) (lambda (arg ...) body))
-         ((param ... arg ...) ((name param ...) arg ...))))]
-    [(_ name (param ...) rest body)
+         ((param ... arg ...) ((name param ...) arg ...)))))
+    ((_ name (param ...) rest body)
      (define name
        (case-lambda
          ((param ...) (lambda rest body))
-         ((param ... . rest) (apply (name param ...) rest))))]))
+         ((param ... . rest) (apply (name param ...) rest)))))))
 
 (define-syntax-rule (show expr)
   (printf "~a: ~a~n" 'expr expr))
