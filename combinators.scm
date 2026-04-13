@@ -31,6 +31,18 @@
       (display expr)
       (newline)))))
 
+(define-syntax test
+  (syntax-rules ()
+    ((_ expr expected)
+     (let ((result expr))
+       (display "[")
+       (display (if (equal? result expected) "PASS" "FAIL"))
+       (display "] ")
+       (write 'expr)
+       (display ": ")
+       (display result)
+       (newline)))))
+
 ;; Combinators
 (define (I x) x)
 (define-combinator K (x) (y) x)
@@ -51,34 +63,34 @@
 (define intersect (cut lset-intersection equal? <> <>))
 
 ;; Examples
+(test (S K K 10) 10)
+
 (define avg (phi sum / length))
-(show (avg '(1 2 3 4)))
+(test (avg '(1 2 3 4)) 5/2)
 
 (define plusOrMinus (phi + list -))
-(show (plusOrMinus 10 5))
+(test (plusOrMinus 10 5) '(15 5))
 
 (define absoluteDifference (B abs -))
-(show (absoluteDifference 10 7))
-(show (absoluteDifference 7 10))
+(test (absoluteDifference 10 7) 3)
+(test (absoluteDifference 7 10) 3)
 
 (define isPalindrome1 (phi string-reverse equal? I))
 (define isPalindrome2 (S equal? string-reverse))
-(show (isPalindrome1 "tacocat"))
-(show (isPalindrome2 "tacocat"))
-(show (isPalindrome1 "tacodog"))
-(show (isPalindrome2 "tacodag"))
+(test (isPalindrome1 "tacocat") #t)
+(test (isPalindrome2 "tacocat") #t)
+(test (isPalindrome1 "tacodog") #f)
+(test (isPalindrome2 "tacodag") #f)
 
 (define isAnagram (psi equal? string-sort))
-(show (isAnagram "owls" "slow"))
-(show (isAnagram "cats" "dogs"))
+(test (isAnagram "owls" "slow") #t)
+(test (isAnagram "cats" "dogs") #f)
 
 ;(define isDisjoint (phi '() equal? intersect))
 (define isDisjoint (B null? intersect))
-(show (isDisjoint '(1 2) '(3 4 5)))
-(show (isDisjoint '(2 3) '(3 4 5)))
+(test (isDisjoint '(1 2) '(3 4 5)) #t)
+(test (isDisjoint '(2 3) '(3 4 5)) #f)
 
 ;(define isPrefixOf (B first find))
 ;(show (isPrefixOf "cat" "catch"))
 ;(show (isPrefixOf "dog" "catch"))
-
-(show (S K K 10))
