@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <print>
+
 #define TEST(expr, expected) \
     do { \
         auto result = (expr); \
