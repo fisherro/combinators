@@ -1,9 +1,10 @@
 (import (scheme base)
         (scheme case-lambda)
         (scheme write)
-        (srfi 1)
-        (srfi 26)
-        (srfi 95))
+        (srfi 1) ; lists
+        (srfi 26) ; cut/cute
+        (srfi 95) ; sort
+        (srfi 130)) ; string cursors
 
 ;;; Inspired by
 ;;; Combinatory Logic and Combinators in Array Languages
@@ -57,6 +58,11 @@
 ; \abcde.ab(cde)
 ;(define-combinator E (f g h) (x y) (f (g (h d e))))
 
+; I: identity
+; K: const
+; B: compose
+; C: flip
+
 ;; Helpers
 (define (sum lyst) (apply + lyst))
 (define string-reverse (B list->string (B reverse string->list)))
@@ -93,6 +99,6 @@
 (test (disjoint? '(1 2) '(3 4 5)) #t)
 (test (disjoint? '(2 3) '(3 4 5)) #f)
 
-;(define prefix-of? (B first find))
-;(show (prefix-of? "cat" "catch"))
-;(show (prefix-of? "dog" "catch"))
+(define prefix-of? (PHI string-cursor=? (B string-cursor-start K) (C string-contains)))
+(test (prefix-of? "cat" "catch") #t)
+(test (prefix-of? "dog" "catch") #f)
