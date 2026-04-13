@@ -1,5 +1,6 @@
 (import (scheme base)
         (scheme case-lambda)
+        (scheme char)
         (scheme write)
         (srfi 1) ; lists
         (srfi 26) ; cut/cute
@@ -104,3 +105,10 @@
 (define prefix-of? (PHI safe-string-cursor=? (B string-cursor-start (C K)) (C string-contains)))
 (test (prefix-of? "cat" "catch") #t)
 (test (prefix-of? "dog" "catch") #f)
+
+(define square (W *))
+(test (square 5) 25)
+
+(test (D string-append string-upcase "hello " "world") "hello WORLD")
+
+(test (D2 string-append string-upcase string-downcase "hello" "WORLD") "HELLOworld")
