@@ -56,14 +56,23 @@
 (define-combinator PHI (f g h) args (f (apply g args) (apply h args)))
 (define-combinator D (f g) (x y) (f x (g y)))
 (define-combinator D2 (f g h) (x y) (f (g x) (h y)))
+
+; The pattern for define-combinator is:
+; (define-combinator name procedure-params value-params body)
+; For E, though, `g` appears to be a value.
+; I need to understand E better before deciding on the implementation.
 ; \abcde.ab(cde)
 ;(define-combinator E (f g h) (x y) (f g (h x y)))
 
 ;; Friendlier aliases
 (define identity I)
-(define const K)
+(define const K) ; or left
+(define hook S)
 (define compose B)
 (define flip C)
+(define dup W)
+(define on PSI)
+(define fork PHI)
 
 ;; Helpers
 (define (sum lyst) (apply + lyst))
