@@ -1,7 +1,8 @@
 (import (scheme base)
         (scheme case-lambda)
         (scheme write)
-        (srfi 1))
+        (srfi 1)
+        (srfi 95))
 ; (srfi 16)
 
 ;;; Inspired by
