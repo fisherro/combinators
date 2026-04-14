@@ -42,7 +42,15 @@ struct overloads : Ts... { using Ts::operator()...; };
         std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected); \
     } while (0)
 
+#if 0
+// Basic...
 auto I = [](auto x) { return x; };
+// Better...
+auto I = [](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); };
+#else
+// Best...
+auto I = std::identity{};
+#endif
 const auto K = overloads {
     [](auto x) { return [=](auto...) { return x; }; },
     [](auto x, auto...) { return x; }
