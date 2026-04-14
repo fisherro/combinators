@@ -44,8 +44,8 @@ struct overloads : Ts... { using Ts::operator()...; };
 
 auto I = [](auto x) { return x; };
 const auto K = overloads {
-    [](auto x) { return [=](auto y) { return x; }; },
-    [](auto x, auto y) { return x; }
+    [](auto x) { return [=](auto...) { return x; }; },
+    [](auto x, auto...) { return x; }
 };
 auto S = [](auto f, auto g) { return [=](auto x) { return f(x, g(x)); }; };
 auto B = [](auto f, auto g) { return [=](auto... args) { return f(g(args...)); }; };
@@ -106,4 +106,10 @@ int main()
     auto is_disjoint = B(std::ranges::empty, intersect);
     TEST(is_disjoint(std::vector{1, 2}, std::vector{3, 4, 5}), true);
     TEST(is_disjoint(std::vector{2, 3}, std::vector{3, 4, 5}), false);
+
+    // Std::string_view::starts_with exists, but we're here to demo combinators.
+    auto find_substring = [](std::string_view sv, std::string_view prefix) { return sv.find(prefix); };
+    auto is_prefix_of = PHI(std::equal_to{}, K(0), C(find_substring));
+    TEST(is_prefix_of("cat"sv, "catch"sv), true);
+    TEST(is_prefix_of("dog"sv, "catch"sv), false);
 }
