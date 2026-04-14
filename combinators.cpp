@@ -7,6 +7,8 @@
 #include <tuple>
 #include <vector>
 
+using namespace std::literals;
+
 template<typename... Ts>
 struct std::formatter<std::tuple<Ts...>> {
     constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
@@ -25,6 +27,9 @@ struct std::formatter<std::tuple<Ts...>> {
     }
 };
 
+template<class... Ts>
+struct overloads : Ts... { using Ts::operator()...; };
+
 #define TEST(expr, expected) \
     do { \
         auto result = (expr); \
@@ -35,8 +40,11 @@ struct std::formatter<std::tuple<Ts...>> {
     } while (0)
 
 auto I = [](auto x) { return x; };
-auto K = [](auto x) { return [=](auto y) { return x; }; };
-auto S = [](auto f, auto g) { return [=](auto x) { return f(x)(g(x)); }; };
+const auto K = overloads {
+    [](auto x) { return [=](auto y) { return x; }; },
+    [](auto x, auto y) { return x; }
+};
+auto S = [](auto f, auto g) { return [=](auto x) { return f(x, g(x)); }; };
 auto B = [](auto f, auto g) { return [=](auto... args) { return f(g(args...)); }; };
 auto C = [](auto f) { return [=](auto x, auto y) { return f(y, x); }; };
 auto W = [](auto f) { return [=](auto x) { return f(x, x); }; };
@@ -62,4 +70,12 @@ int main()
     auto abs_diff = B(abs, std::minus<int>{});
     TEST(abs_diff(10, 7), 3);
     TEST(abs_diff(7, 10), 3);
+
+    auto string_reverse = [](std::string_view sv) { return std::string(sv.rbegin(), sv.rend()); };
+    auto palindrome1 = PHI(std::equal_to<std::string>{}, string_reverse, I);
+    TEST(palindrome1("tacocat"s), true);
+    TEST(palindrome1("tacodog"s), false);
+    auto palindrome2 = S(std::equal_to<std::string>{}, string_reverse);
+    TEST(palindrome2("tacocat"s), true);
+    TEST(palindrome2("tacodog"s), false);
 }
