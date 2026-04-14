@@ -78,4 +78,9 @@ int main()
     auto palindrome2 = S(std::equal_to<std::string>{}, string_reverse);
     TEST(palindrome2("tacocat"s), true);
     TEST(palindrome2("tacodog"s), false);
+
+    auto string_sort = [](std::string_view sv) {  std::string s{sv}; std::ranges::sort(s); return s; };
+    auto anagram = PSI(std::equal_to<std::string>{}, string_sort);
+    TEST(anagram("owls"sv, "slow"sv), true);
+    TEST(anagram("cats"sv, "dogs"sv), false);
 }
