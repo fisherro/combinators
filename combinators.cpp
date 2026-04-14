@@ -43,6 +43,11 @@ struct overloads : Ts... { using Ts::operator()...; };
         std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected_value); \
     } while (0)
 
+// STATIC_TEST proves the expression is a core constant expression. If the
+// chain pipes through any non-constexpr function, the build fails and the
+// compiler points at the offending call. Works at any -O level.
+#define STATIC_TEST(expr, expected) static_assert((expr) == (expected))
+
 #if 0
 // Basic...
 auto I = [](auto x) { return x; };
@@ -124,10 +129,36 @@ int main()
     constexpr auto square = W(std::multiplies<>{});
     TEST(square(5), 25);
 
+    // ::toupper and ::tolower are not constexpr, so we provide these.
+    constexpr auto ascii_to_upper = [](char c) { return ((c >= 'a') and (c <= 'z')) ? static_cast<char>(c - ('a' - 'A')) : c; };
+    constexpr auto ascii_to_lower = [](char c) { return ((c >= 'A') and (c <= 'Z')) ? static_cast<char>(c + ('a' - 'A')) : c; };
+
     constexpr auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
     // I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
-    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::toupper); return s; };
-    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::tolower); return s; };
+    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_upper); return s; };
+    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
+
+    // Compile-time evaluation checks. Each STATIC_TEST forces the expression
+    // into a constant-evaluated context; if it fails to compile, the chain
+    // contains a non-constexpr call.
+    STATIC_TEST(S(K, K)(42), 42);
+    STATIC_TEST(avg(std::vector{1, 2, 3, 4}), 5. / 2.);
+    STATIC_TEST(plus_or_minus(10, 5), std::make_tuple(15, 5));
+    STATIC_TEST(abs_diff(10, 7), 3);
+    STATIC_TEST(abs_diff(7, 10), 3);
+    STATIC_TEST(palindrome1("tacocat"s), true);
+    STATIC_TEST(palindrome1("tacodog"s), false);
+    STATIC_TEST(palindrome2("tacocat"s), true);
+    STATIC_TEST(palindrome2("tacodog"s), false);
+    STATIC_TEST(anagram("owls"sv, "slow"sv), true);
+    STATIC_TEST(anagram("cats"sv, "dogs"sv), false);
+    STATIC_TEST(is_disjoint(std::vector{1, 2}, std::vector{3, 4, 5}), true);
+    STATIC_TEST(is_disjoint(std::vector{2, 3}, std::vector{3, 4, 5}), false);
+    STATIC_TEST(is_prefix_of("cat"sv, "catch"sv), true);
+    STATIC_TEST(is_prefix_of("dog"sv, "catch"sv), false);
+    STATIC_TEST(square(5), 25);
+    STATIC_TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD"s);
+    STATIC_TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world"s);
 }
