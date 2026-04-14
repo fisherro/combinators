@@ -36,10 +36,11 @@ struct overloads : Ts... { using Ts::operator()...; };
 #define TEST(expr, expected) \
     do { \
         auto result = (expr); \
-        bool passed = (result == (expected)); \
+        auto expected_value = (expected); \
+        bool passed = (result == (expected_value)); \
         std::string status = passed ? "PASS" : "FAIL"; \
         std::string op = passed ? "==" : "!="; \
-        std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected); \
+        std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected_value); \
     } while (0)
 
 #if 0
