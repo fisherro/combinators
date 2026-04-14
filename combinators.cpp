@@ -143,22 +143,24 @@ int main()
     // --- Practical examples: where combinators actually earn their keep ---
 
     // PSI is Haskell's `on`: build a comparator or key-equality predicate
-    // from a projection without writing a fresh two-argument lambda every
-    // time. Day-to-day use case: plug it straight into sort / set / map /
-    // unique / equal_range. Ranges projections cover the single-key case,
-    // but PSI composes with *any* binary op (less, equal_to, approx-equal,
-    // custom), and works with non-ranges algorithms that have no
+    // from a projection, inline, right at the call site of whichever
+    // standard algorithm needs it. No named helper, no captured-state
+    // lambda. Ranges projections cover the single-key case, but PSI
+    // composes with *any* binary op (less, equal_to, approx-equal,
+    // custom), and works with legacy std:: algorithms that have no
     // projection parameter.
-    constexpr auto ci_less  = PSI(std::less<std::string>{},     string_downcase);
-    constexpr auto ci_equal = PSI(std::equal_to<std::string>{}, string_downcase);
-    TEST(ci_less("Apple"sv, "banana"sv), true);
-    TEST(ci_less("banana"sv, "Apple"sv), false);
-    TEST(ci_equal("Hello"sv, "HELLO"sv), true);
 
-    // ...and dropped straight into a standard algorithm:
+    // Case-insensitive sort - the comparator lives right in the sort call.
     auto words = std::vector<std::string>{"banana", "Apple", "cherry"};
-    std::ranges::sort(words, ci_less);
+    std::ranges::sort(words, PSI(std::less<std::string>{}, string_downcase));
     TEST(words.front(), "Apple"s);
+
+    // Case-insensitive find - std::bind_front bridges the binary PSI
+    // predicate into the unary one find_if wants, by fixing its first
+    // argument to the value we're searching for.
+    auto apple = std::ranges::find_if(words,
+        std::bind_front(PSI(std::equal_to<std::string>{}, string_downcase), "APPLE"sv));
+    TEST(*apple, "Apple"s);
 
     // Sort records by a field - the single most common "I need a
     // comparator" situation in real C++ code.
