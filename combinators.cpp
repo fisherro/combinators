@@ -3,8 +3,11 @@
 #include <functional>
 #include <numeric>
 #include <print>
+#include <ranges>
 #include <string>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 using namespace std::literals;
@@ -83,4 +86,24 @@ int main()
     auto anagram = PSI(std::equal_to<std::string>{}, string_sort);
     TEST(anagram("owls"sv, "slow"sv), true);
     TEST(anagram("cats"sv, "dogs"sv), false);
+
+    auto intersect = [](auto xs, auto ys) {
+        // We'll be functional and not modify the input.
+        // We could check the type of the range and, if it is a forward or better,
+        // we could use std::ranges::is_sorted before copying and sorting it.
+        // Full support for std::ranges::to isn't in GCC 14.
+        using xs_value_type = std::remove_reference_t<decltype(*xs.begin())>;
+        using ys_value_type = std::remove_reference_t<decltype(*ys.begin())>;
+        using value_type = std::common_type_t<xs_value_type, ys_value_type>;
+        std::vector<xs_value_type> sorted_xs(xs.begin(), xs.end());
+        std::vector<ys_value_type> sorted_ys(ys.begin(), ys.end());
+        std::ranges::sort(sorted_xs);
+        std::ranges::sort(sorted_ys);
+        std::vector<value_type> result;
+        std::ranges::set_intersection(sorted_xs, sorted_ys, std::back_inserter(result));
+        return result;
+    };
+    auto is_disjoint = B(std::ranges::empty, intersect);
+    TEST(is_disjoint(std::vector{1, 2}, std::vector{3, 4, 5}), true);
+    TEST(is_disjoint(std::vector{2, 3}, std::vector{3, 4, 5}), false);
 }
