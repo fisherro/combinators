@@ -68,7 +68,7 @@ int main()
 {
     TEST(S(K, K)(42), 42);
 
-    auto sum = [](auto ns) { return std::ranges::fold_left(ns, 0, std::plus<int>{}); };
+    auto sum = [](auto ns) { return std::ranges::fold_left_first(ns, std::plus<int>{}).value_or(0); };
     auto avg = PHI(std::divides<double>{}, sum, std::ranges::size);
     TEST(avg(std::vector{1, 2, 3, 4}), 5. / 2.);
 
