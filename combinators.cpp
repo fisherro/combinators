@@ -163,8 +163,7 @@ int main()
     // Sort records by a field - the single most common "I need a
     // comparator" situation in real C++ code.
     struct employee { std::string_view name; int salary; };
-    constexpr auto get_salary = [](employee e) { return e.salary; };
-    constexpr auto by_salary  = PSI(std::less<>{}, get_salary);
+    constexpr auto by_salary  = PSI(std::less<>{}, std::mem_fn(&employee::salary));
     TEST(by_salary(employee{"alice", 50}, employee{"bob", 80}), true);
     TEST(by_salary(employee{"bob", 80}, employee{"alice", 50}), false);
 
