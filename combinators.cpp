@@ -159,12 +159,18 @@ int main()
     TEST(words.size(), 3uz);
     TEST(*words.begin(), "Apple"s);  // set ordered case-insensitively
 
-    // Sort records by a field - the single most common "I need a
-    // comparator" situation in real C++ code.
+    // Same story, sorting records by a field: ranges::sort would take
+    // a projection, but std::set wants a Compare type. PSI + std::mem_fn
+    // orders a set of records by a data member without a boilerplate
+    // comparator struct.
     struct employee { std::string_view name; int salary; };
-    constexpr auto by_salary  = PSI(std::less<>{}, std::mem_fn(&employee::salary));
-    TEST(by_salary(employee{"alice", 50}, employee{"bob", 80}), true);
-    TEST(by_salary(employee{"bob", 80}, employee{"alice", 50}), false);
+    auto by_salary = PSI(std::less<>{}, std::mem_fn(&employee::salary));
+    std::set<employee, decltype(by_salary)> payroll(by_salary);
+    payroll.insert({"alice", 50});
+    payroll.insert({"bob",   80});
+    payroll.insert({"carol", 65});
+    TEST(payroll.begin()->name,  "alice"sv);  // lowest salary first
+    TEST(payroll.rbegin()->name, "bob"sv);    // highest salary last
 
     // PHI fuses two reductions over the same input into one combined
     // result. `avg` above is sum/size; `range_span` is max-min. Pattern
