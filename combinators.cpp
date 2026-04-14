@@ -112,4 +112,14 @@ int main()
     auto is_prefix_of = PHI(std::equal_to{}, K(0), C(find_substring));
     TEST(is_prefix_of("cat"sv, "catch"sv), true);
     TEST(is_prefix_of("dog"sv, "catch"sv), false);
+
+    auto square = W(std::multiplies<>{});
+    TEST(square(5), 25);
+
+    auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
+    // I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
+    auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::toupper); return s; };
+    auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::tolower); return s; };
+    TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
+    TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
 }
