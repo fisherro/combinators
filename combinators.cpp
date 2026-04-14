@@ -140,6 +140,48 @@ int main()
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
 
+    // --- Practical examples: where combinators actually earn their keep ---
+
+    // PSI is Haskell's `on`: build a comparator or key-equality predicate
+    // from a projection without writing a fresh two-argument lambda every
+    // time. Day-to-day use case: plug it straight into sort / set / map /
+    // unique / equal_range. Ranges projections cover the single-key case,
+    // but PSI composes with *any* binary op (less, equal_to, approx-equal,
+    // custom), and works with non-ranges algorithms that have no
+    // projection parameter.
+    constexpr auto ci_less  = PSI(std::less<std::string>{},     string_downcase);
+    constexpr auto ci_equal = PSI(std::equal_to<std::string>{}, string_downcase);
+    TEST(ci_less("Apple"sv, "banana"sv), true);
+    TEST(ci_less("banana"sv, "Apple"sv), false);
+    TEST(ci_equal("Hello"sv, "HELLO"sv), true);
+
+    // ...and dropped straight into a standard algorithm:
+    auto words = std::vector<std::string>{"banana", "Apple", "cherry"};
+    std::ranges::sort(words, ci_less);
+    TEST(words.front(), "Apple"s);
+
+    // Sort records by a field - the single most common "I need a
+    // comparator" situation in real C++ code.
+    struct employee { std::string_view name; int salary; };
+    constexpr auto get_salary = [](employee e) { return e.salary; };
+    constexpr auto by_salary  = PSI(std::less<>{}, get_salary);
+    TEST(by_salary(employee{"alice", 50}, employee{"bob", 80}), true);
+    TEST(by_salary(employee{"bob", 80}, employee{"alice", 50}), false);
+
+    // PHI fuses two reductions over the same input into one combined
+    // result. `avg` above is sum/size; `range_span` is max-min. Pattern
+    // shows up constantly in numerical and statistical code.
+    constexpr auto range_span = PHI(std::minus<int>{}, std::ranges::max, std::ranges::min);
+    TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
+
+    // Pointfree compound predicates: combine two unary predicates with
+    // logical_and via PHI, then hand the result straight to a ranges
+    // algorithm. No named helper, no captured-state lambda.
+    constexpr auto is_even     = [](int n) { return n % 2 == 0; };
+    constexpr auto is_positive = [](int n) { return n > 0; };
+    constexpr auto even_and_positive = PHI(std::logical_and<>{}, is_even, is_positive);
+    TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
+
     // Compile-time evaluation checks. Each STATIC_TEST forces the expression
     // into a constant-evaluated context; if it fails to compile, the chain
     // contains a non-constexpr call.
@@ -161,4 +203,11 @@ int main()
     STATIC_TEST(square(5), 25);
     STATIC_TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD"s);
     STATIC_TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world"s);
+    STATIC_TEST(ci_less("Apple"sv, "banana"sv), true);
+    STATIC_TEST(ci_less("banana"sv, "Apple"sv), false);
+    STATIC_TEST(ci_equal("Hello"sv, "HELLO"sv), true);
+    STATIC_TEST(by_salary(employee{"alice", 50}, employee{"bob", 80}), true);
+    STATIC_TEST(by_salary(employee{"bob", 80}, employee{"alice", 50}), false);
+    STATIC_TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
+    STATIC_TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
 }
