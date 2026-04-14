@@ -4,6 +4,7 @@
 #include <numeric>
 #include <print>
 #include <ranges>
+#include <set>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -142,25 +143,21 @@ int main()
 
     // --- Practical examples: where combinators actually earn their keep ---
 
-    // PSI is Haskell's `on`: build a comparator or key-equality predicate
-    // from a projection, inline, right at the call site of whichever
-    // standard algorithm needs it. No named helper, no captured-state
-    // lambda. Ranges projections cover the single-key case, but PSI
-    // composes with *any* binary op (less, equal_to, approx-equal,
-    // custom), and works with legacy std:: algorithms that have no
-    // projection parameter.
-
-    // Case-insensitive sort - the comparator lives right in the sort call.
-    auto words = std::vector<std::string>{"banana", "Apple", "cherry"};
-    std::ranges::sort(words, PSI(std::less<std::string>{}, string_downcase));
-    TEST(words.front(), "Apple"s);
-
-    // Case-insensitive find - std::bind_front bridges the binary PSI
-    // predicate into the unary one find_if wants, by fixing its first
-    // argument to the value we're searching for.
-    auto apple = std::ranges::find_if(words,
-        std::bind_front(PSI(std::equal_to<std::string>{}, string_downcase), "APPLE"sv));
-    TEST(*apple, "Apple"s);
+    // PSI is Haskell's `on`: build a comparator from a projection.
+    // Ranges algorithms take a projection parameter that covers this
+    // for the algorithm case - std::ranges::sort(words, std::less<>{},
+    // string_downcase) works fine. But *containers* - std::set,
+    // std::map, std::priority_queue - take a Compare *type*, not a
+    // projection, and that's where PSI earns its keep: it gives you a
+    // ready-made Compare without writing a boilerplate comparator struct.
+    auto ci_less = PSI(std::less<std::string>{}, string_downcase);
+    std::set<std::string, decltype(ci_less)> words(ci_less);
+    words.insert("banana");
+    words.insert("Apple");
+    words.insert("APPLE");  // dupe of "Apple" under ci_less - not inserted
+    words.insert("cherry");
+    TEST(words.size(), 3uz);
+    TEST(*words.begin(), "Apple"s);  // set ordered case-insensitively
 
     // Sort records by a field - the single most common "I need a
     // comparator" situation in real C++ code.
