@@ -52,7 +52,7 @@ auto I = [](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); }
 // Best...
 constexpr auto I = std::identity{};
 #endif
-const auto K = overloads {
+constexpr auto K = overloads {
     [](auto x) { return [=](auto...) { return x; }; },
     [](auto x, auto...) { return x; }
 };
