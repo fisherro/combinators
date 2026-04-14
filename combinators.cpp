@@ -50,53 +50,52 @@ auto I = [](auto x) { return x; };
 auto I = [](auto&& x) -> decltype(auto) { return std::forward<decltype(x)>(x); };
 #else
 // Best...
-auto I = std::identity{};
+constexpr auto I = std::identity{};
 #endif
 const auto K = overloads {
     [](auto x) { return [=](auto...) { return x; }; },
     [](auto x, auto...) { return x; }
 };
-auto S = [](auto f, auto g) { return [=](auto x) { return f(x, g(x)); }; };
-auto B = [](auto f, auto g) { return [=](auto... args) { return f(g(args...)); }; };
-auto C = [](auto f) { return [=](auto x, auto y) { return f(y, x); }; };
-auto W = [](auto f) { return [=](auto x) { return f(x, x); }; };
-auto PSI = [](auto f, auto g) { return [=](auto x, auto y) { return f(g(x), g(y)); }; };
-auto PHI = [](auto f, auto g, auto h) { return [=](auto... x) { return f(g(x...), h(x...)); }; };
-auto D = [](auto f, auto g) { return [=](auto x, auto y) { return f(x, g(y)); }; };
-auto D2 = [](auto f, auto g, auto h) { return [=](auto x, auto y) { return f(g(x), h(y)); }; };
+constexpr auto S = [](auto f, auto g) { return [=](auto x) { return f(x, g(x)); }; };
+constexpr auto B = [](auto f, auto g) { return [=](auto... args) { return f(g(args...)); }; };
+constexpr auto C = [](auto f) { return [=](auto x, auto y) { return f(y, x); }; };
+constexpr auto W = [](auto f) { return [=](auto x) { return f(x, x); }; };
+constexpr auto PSI = [](auto f, auto g) { return [=](auto x, auto y) { return f(g(x), g(y)); }; };
+constexpr auto PHI = [](auto f, auto g, auto h) { return [=](auto... x) { return f(g(x...), h(x...)); }; };
+constexpr auto D = [](auto f, auto g) { return [=](auto x, auto y) { return f(x, g(y)); }; };
+constexpr auto D2 = [](auto f, auto g, auto h) { return [=](auto x, auto y) { return f(g(x), h(y)); }; };
 
 int main()
 {
     TEST(S(K, K)(42), 42);
 
-    auto sum = [](auto ns) { return std::ranges::fold_left_first(ns, std::plus<int>{}).value_or(0); };
-    auto avg = PHI(std::divides<double>{}, sum, std::ranges::size);
+    constexpr auto sum = [](auto ns) { return std::ranges::fold_left_first(ns, std::plus<int>{}).value_or(0); };
+    constexpr auto avg = PHI(std::divides<double>{}, sum, std::ranges::size);
     TEST(avg(std::vector{1, 2, 3, 4}), 5. / 2.);
 
-    auto make_tuple = [](auto... args) { return std::make_tuple(args...); };
-    auto plus_or_minus = PHI(make_tuple, std::plus<int>{}, std::minus<int>{});
-
+    constexpr auto make_tuple = [](auto... args) { return std::make_tuple(args...); };
+    constexpr auto plus_or_minus = PHI(make_tuple, std::plus<int>{}, std::minus<int>{});
     TEST(plus_or_minus(10, 5), make_tuple(15, 5));
 
-    auto abs = [](auto x) { return std::abs(x); };
-    auto abs_diff = B(abs, std::minus<int>{});
+    constexpr auto abs = [](auto x) { return std::abs(x); };
+    constexpr auto abs_diff = B(abs, std::minus<int>{});
     TEST(abs_diff(10, 7), 3);
     TEST(abs_diff(7, 10), 3);
 
-    auto string_reverse = [](std::string_view sv) { return std::string(sv.rbegin(), sv.rend()); };
-    auto palindrome1 = PHI(std::equal_to<std::string>{}, string_reverse, I);
+    constexpr auto string_reverse = [](std::string_view sv) { return std::string(sv.rbegin(), sv.rend()); };
+    constexpr auto palindrome1 = PHI(std::equal_to<std::string>{}, string_reverse, I);
     TEST(palindrome1("tacocat"s), true);
     TEST(palindrome1("tacodog"s), false);
-    auto palindrome2 = S(std::equal_to<std::string>{}, string_reverse);
+    constexpr auto palindrome2 = S(std::equal_to<std::string>{}, string_reverse);
     TEST(palindrome2("tacocat"s), true);
     TEST(palindrome2("tacodog"s), false);
 
-    auto string_sort = [](std::string_view sv) {  std::string s{sv}; std::ranges::sort(s); return s; };
-    auto anagram = PSI(std::equal_to<std::string>{}, string_sort);
+    constexpr auto string_sort = [](std::string_view sv) {  std::string s{sv}; std::ranges::sort(s); return s; };
+    constexpr auto anagram = PSI(std::equal_to<std::string>{}, string_sort);
     TEST(anagram("owls"sv, "slow"sv), true);
     TEST(anagram("cats"sv, "dogs"sv), false);
 
-    auto intersect = [](auto xs, auto ys) {
+    constexpr auto intersect = [](auto xs, auto ys) {
         // We'll be functional and not modify the input.
         // We could check the type of the range and, if it is a forward or better,
         // we could use std::ranges::is_sorted before copying and sorting it.
@@ -112,23 +111,23 @@ int main()
         std::ranges::set_intersection(sorted_xs, sorted_ys, std::back_inserter(result));
         return result;
     };
-    auto is_disjoint = B(std::ranges::empty, intersect);
+    constexpr auto is_disjoint = B(std::ranges::empty, intersect);
     TEST(is_disjoint(std::vector{1, 2}, std::vector{3, 4, 5}), true);
     TEST(is_disjoint(std::vector{2, 3}, std::vector{3, 4, 5}), false);
 
     // Std::string_view::starts_with exists, but we're here to demo combinators.
-    auto find_substring = [](std::string_view sv, std::string_view prefix) { return sv.find(prefix); };
-    auto is_prefix_of = PHI(std::equal_to{}, K(0), C(find_substring));
+    constexpr auto find_substring = [](std::string_view sv, std::string_view prefix) { return sv.find(prefix); };
+    constexpr auto is_prefix_of = PHI(std::equal_to{}, K(0), C(find_substring));
     TEST(is_prefix_of("cat"sv, "catch"sv), true);
     TEST(is_prefix_of("dog"sv, "catch"sv), false);
 
-    auto square = W(std::multiplies<>{});
+    constexpr auto square = W(std::multiplies<>{});
     TEST(square(5), 25);
 
-    auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
+    constexpr auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
     // I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
-    auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::toupper); return s; };
-    auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::tolower); return s; };
+    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::toupper); return s; };
+    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::tolower); return s; };
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
 }
