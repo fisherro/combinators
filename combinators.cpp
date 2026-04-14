@@ -4,6 +4,7 @@
 #include <numeric>
 #include <print>
 #include <ranges>
+#include <set>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -139,6 +140,51 @@ int main()
     constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
+
+    // --- Practical examples: where combinators actually earn their keep ---
+
+    // PSI is Haskell's `on`: build a comparator from a projection.
+    // Ranges algorithms take a projection parameter that covers this
+    // for the algorithm case - std::ranges::sort(words, std::less<>{},
+    // string_downcase) works fine. But *containers* - std::set,
+    // std::map, std::priority_queue - take a Compare *type*, not a
+    // projection, and that's where PSI earns its keep: it gives you a
+    // ready-made Compare without writing a boilerplate comparator struct.
+    auto ci_less = PSI(std::less<std::string>{}, string_downcase);
+    std::set<std::string, decltype(ci_less)> words(ci_less);
+    words.insert("banana");
+    words.insert("Apple");
+    words.insert("APPLE");  // dupe of "Apple" under ci_less - not inserted
+    words.insert("cherry");
+    TEST(words.size(), 3uz);
+    TEST(*words.begin(), "Apple"s);  // set ordered case-insensitively
+
+    // Same story, sorting records by a field: ranges::sort would take
+    // a projection, but std::set wants a Compare type. PSI + std::mem_fn
+    // orders a set of records by a data member without a boilerplate
+    // comparator struct.
+    struct employee { std::string_view name; int salary; };
+    auto by_salary = PSI(std::less<>{}, std::mem_fn(&employee::salary));
+    std::set<employee, decltype(by_salary)> payroll(by_salary);
+    payroll.insert({"alice", 50});
+    payroll.insert({"bob",   80});
+    payroll.insert({"carol", 65});
+    TEST(payroll.begin()->name,  "alice"sv);  // lowest salary first
+    TEST(payroll.rbegin()->name, "bob"sv);    // highest salary last
+
+    // PHI fuses two reductions over the same input into one combined
+    // result. `avg` above is sum/size; `range_span` is max-min. Pattern
+    // shows up constantly in numerical and statistical code.
+    constexpr auto range_span = PHI(std::minus<int>{}, std::ranges::max, std::ranges::min);
+    TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
+
+    // Pointfree compound predicates: combine two unary predicates with
+    // logical_and via PHI, then hand the result straight to a ranges
+    // algorithm. No named helper, no captured-state lambda.
+    constexpr auto is_even     = [](int n) { return n % 2 == 0; };
+    constexpr auto is_positive = [](int n) { return n > 0; };
+    constexpr auto even_and_positive = PHI(std::logical_and<>{}, is_even, is_positive);
+    TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
 
     // Compile-time evaluation checks. Each STATIC_TEST forces the expression
     // into a constant-evaluated context; if it fails to compile, the chain
