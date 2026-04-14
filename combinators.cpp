@@ -129,10 +129,14 @@ int main()
     constexpr auto square = W(std::multiplies<>{});
     TEST(square(5), 25);
 
+	// ::toupper and ::tolower are not constexpr, so we provide these
+	constexpr auto ascii_to_upper = [](char c){ return ((c >= 'a') and (c <= 'z')) ? c - 20 : c; };
+	constexpr auto ascii_to_lower = [](char c){ return ((c >= 'A') and (c <= 'Z')) ? c + 20 : c; };
+
     constexpr auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
     // I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
-    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::toupper); return s; };
-    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ::tolower); return s; };
+    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_upper); return s; };
+    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
 
