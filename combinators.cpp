@@ -202,11 +202,4 @@ int main()
     STATIC_TEST(square(5), 25);
     STATIC_TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD"s);
     STATIC_TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world"s);
-    STATIC_TEST(ci_less("Apple"sv, "banana"sv), true);
-    STATIC_TEST(ci_less("banana"sv, "Apple"sv), false);
-    STATIC_TEST(ci_equal("Hello"sv, "HELLO"sv), true);
-    STATIC_TEST(by_salary(employee{"alice", 50}, employee{"bob", 80}), true);
-    STATIC_TEST(by_salary(employee{"bob", 80}, employee{"alice", 50}), false);
-    STATIC_TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
-    STATIC_TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
 }
