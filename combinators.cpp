@@ -34,15 +34,14 @@ struct std::formatter<std::tuple<Ts...>> {
 template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
 
-#define TEST(expr, expected) \
-    do { \
-        auto result = (expr); \
-        auto expected_value = (expected); \
-        bool passed = (result == (expected_value)); \
-        std::string status = passed ? "PASS" : "FAIL"; \
-        std::string op = passed ? "==" : "!="; \
-        std::println("[{}] {}: {} {} {}", status, #expr, result, op, expected_value); \
-    } while (0)
+void run_test(std::string_view expr_str, const auto& result, const auto& expected_value) {
+    bool passed = (result == expected_value);
+    std::string_view status = passed ? "PASS" : "FAIL";
+    std::string_view op = passed ? "==" : "!=";
+    std::println("[{}] {}: {} {} {}", status, expr_str, result, op, expected_value);
+}
+
+#define TEST(expr, expected) run_test(#expr, (expr), (expected))
 
 // STATIC_TEST proves the expression is a core constant expression. If the
 // chain pipes through any non-constexpr function, the build fails and the
