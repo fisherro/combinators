@@ -186,6 +186,69 @@ int main()
     constexpr auto even_and_positive = PHI(std::logical_and<>{}, is_even, is_positive);
     TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
 
+    // --- Ranges views + combinators ---
+
+    // PHI predicates plug straight into views::filter - the same callable
+    // passed to count_if above works unchanged as a filter predicate.
+    {
+        auto nums = std::vector{-4, -2, -1, 0, 1, 2, 3, 4, 5, 6};
+        auto filtered = nums | std::views::filter(even_and_positive);
+        TEST(std::ranges::equal(filtered, std::vector{2, 4, 6}), true);
+    }
+
+    // B composes two callables point-free.  Passed to views::transform it
+    // chains operations without an intermediate lambda.
+    // B(square, abs)(x) = square(abs(x))
+    {
+        auto abs_squared = B(square, abs);
+        auto data = std::vector{-3, -2, -1, 0, 1, 2, 3};
+        auto transformed = data | std::views::transform(abs_squared);
+        TEST(std::ranges::equal(transformed, std::vector{9, 4, 1, 0, 1, 4, 9}), true);
+    }
+
+    // S(f, K(n)) builds a unary "compare against constant n" predicate:
+    //   S(less, K(70))(x) = less(x, K(70)(x)) = x < 70
+    // Composing with B pipes it through a field projection to get a
+    // record-level predicate with no boilerplate lambda.
+    // payroll is already sorted cheapest-first by the PSI comparator above,
+    // so take_while/drop_while partition it cleanly at the salary threshold.
+    {
+        auto under_budget = B(S(std::less<int>{}, K(70)),
+                              std::mem_fn(&employee::salary));
+
+        auto affordable = payroll | std::views::take_while(under_budget);
+        TEST(std::ranges::distance(affordable), 2);             // alice(50), carol(65)
+        TEST(std::ranges::begin(affordable)->name, "alice"sv);
+
+        auto over_budget = payroll | std::views::drop_while(under_budget);
+        TEST(std::ranges::begin(over_budget)->name, "bob"sv);
+    }
+
+    // --- Combinators as projection parameters ---
+
+    // Ranges algorithms accept a projection (a unary callable) rather than
+    // a full binary comparator.  B composes a transformation with a field
+    // accessor, giving the unary callable algorithms want - no lambda needed.
+    // Compare with the PSI example above: PSI yields a Compare *type* for
+    // containers; a B-composed projection is the cleaner fit for algorithms.
+    {
+        auto employees = std::vector<employee>{{"Bob", 80}, {"alice", 50}, {"Carol", 65}};
+        auto ci_name = B(string_downcase, std::mem_fn(&employee::name));
+        std::ranges::sort(employees, std::less{}, ci_name);
+        TEST(employees.front().name, "alice"sv);
+        TEST(employees.back().name,  "Carol"sv);
+    }
+
+    // B also works as a projection in non-sort algorithms.
+    // B(ranges::size, mem_fn(name)) composes the length function with the
+    // name accessor to project each employee down to their name length.
+    {
+        auto employees = std::vector<employee>{{"bob", 80}, {"alice", 50}, {"jo", 65}};
+        auto name_len = B(std::ranges::size, std::mem_fn(&employee::name));
+        auto longest = std::ranges::max_element(employees, std::less{}, name_len);
+        TEST(longest->name, "alice"sv);   // 5 chars > "bob" (3) > "jo" (2)
+    }
+
     // Compile-time evaluation checks. Each STATIC_TEST forces the expression
     // into a constant-evaluated context; if it fails to compile, the chain
     // contains a non-constexpr call.
