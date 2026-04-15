@@ -189,6 +189,8 @@ int main()
     // Compile-time evaluation checks. Each STATIC_TEST forces the expression
     // into a constant-evaluated context; if it fails to compile, the chain
     // contains a non-constexpr call.
+    // These only cover the basic tests.
+    // They're for satisfying curiosity rather than demonstrating anything.
     STATIC_TEST(S(K, K)(42), 42);
     STATIC_TEST(avg(std::vector{1, 2, 3, 4}), 5. / 2.);
     STATIC_TEST(plus_or_minus(10, 5), std::make_tuple(15, 5));
