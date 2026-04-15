@@ -14,3 +14,7 @@ if ! command -v g++-14 &> /dev/null; then
 fi
 
 update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 200
+
+if ! command -v node &> /dev/null && ! command -v nodejs &> /dev/null; then
+  apt-get install -y nodejs
+fi
