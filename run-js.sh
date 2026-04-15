@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JS_FILE="${SCRIPT_DIR}/combinators.js"
 
 if [ ! -f "${JS_FILE}" ]; then
-    echo "run-combinators.sh: ${JS_FILE} not found" >&2
+    echo "run-js.sh: ${JS_FILE} not found" >&2
     exit 1
 fi
 
@@ -34,7 +34,7 @@ elif command -v d8 >/dev/null 2>&1; then
 elif command -v jsc >/dev/null 2>&1; then
     run_with jsc
 else
-    echo "run-combinators.sh: no JavaScript interpreter found" >&2
+    echo "run-js.sh: no JavaScript interpreter found" >&2
     echo "  tried: node, nodejs, deno, bun, qjs, d8, jsc" >&2
     exit 127
 fi
