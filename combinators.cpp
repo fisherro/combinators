@@ -79,8 +79,6 @@ constexpr auto string_append = [](std::string_view a, std::string_view b) { retu
 constexpr auto string_upcase   = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_upper); return s; };
 constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
 
-constexpr auto square = W(std::multiplies<>{});
-
 constexpr auto is_even     = [](int n) { return n % 2 == 0; };
 constexpr auto is_positive = [](int n) { return n > 0; };
 
@@ -214,7 +212,8 @@ void example_transform_view() {
 
     // --- With combinators ---
     {
-        auto transformed = data | std::views::transform(B(square, [](auto x) { return std::abs(x); }));
+        auto sq = [](auto x) { return x * x; };
+        auto transformed = data | std::views::transform(B(sq, [](auto x) { return std::abs(x); }));
         TEST(std::ranges::equal(transformed, std::vector{9, 4, 1, 0, 1, 4, 9}), true);
     }
 
@@ -363,6 +362,7 @@ int main()
     TEST(is_prefix_of("cat"sv, "catch"sv), true);
     TEST(is_prefix_of("dog"sv, "catch"sv), false);
 
+    constexpr auto square = W(std::multiplies<>{});
     TEST(square(5), 25);
 
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
