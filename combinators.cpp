@@ -70,6 +70,242 @@ constexpr auto PHI = [](auto f, auto g, auto h) { return [=](auto... x) { return
 constexpr auto D = [](auto f, auto g) { return [=](auto x, auto y) { return f(x, g(y)); }; };
 constexpr auto D2 = [](auto f, auto g, auto h) { return [=](auto x, auto y) { return f(g(x), h(y)); }; };
 
+// Helpers shared by the basic tests and practical examples.
+constexpr auto ascii_to_upper = [](char c) { return ((c >= 'a') and (c <= 'z')) ? static_cast<char>(c - ('a' - 'A')) : c; };
+constexpr auto ascii_to_lower = [](char c) { return ((c >= 'A') and (c <= 'Z')) ? static_cast<char>(c + ('a' - 'A')) : c; };
+
+constexpr auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
+// I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
+constexpr auto string_upcase   = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_upper); return s; };
+constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
+
+constexpr auto is_even     = [](int n) { return n % 2 == 0; };
+constexpr auto is_positive = [](int n) { return n > 0; };
+
+struct employee { std::string_view name; int salary; };
+
+// -----------------------------------------------------------------------
+// Practical examples: where combinators actually earn their keep.
+// Each function shows the combinator approach alongside the equivalent
+// idiomatic C++ without combinators, so you can judge the trade-offs.
+// -----------------------------------------------------------------------
+
+void example_ci_set() {
+    // PSI is Haskell's `on`: build a comparator from a projection.
+    // Ranges algorithms take a projection parameter that covers this
+    // for the algorithm case - std::ranges::sort(words, std::less<>{},
+    // string_downcase) works fine. But *containers* - std::set,
+    // std::map, std::priority_queue - take a Compare *type*, not a
+    // projection, and that's where PSI earns its keep: it gives you a
+    // ready-made Compare without writing a boilerplate comparator struct.
+
+    // --- With combinators ---
+    {
+        auto ci_less = PSI(std::less<std::string>{}, string_downcase);
+        std::set<std::string, decltype(ci_less)> words(ci_less);
+        words.insert("banana");
+        words.insert("Apple");
+        words.insert("APPLE");  // dupe of "Apple" under ci_less - not inserted
+        words.insert("cherry");
+        TEST(words.size(), 3uz);
+        TEST(*words.begin(), "Apple"s);  // set ordered case-insensitively
+    }
+
+    // --- Without combinators ---
+    {
+        auto ci_less = [](const std::string& a, const std::string& b) {
+            return string_downcase(a) < string_downcase(b);
+        };
+        std::set<std::string, decltype(ci_less)> words(ci_less);
+        words.insert("banana");
+        words.insert("Apple");
+        words.insert("APPLE");
+        words.insert("cherry");
+        TEST(words.size(), 3uz);
+        TEST(*words.begin(), "Apple"s);
+    }
+}
+
+void example_sort_by_field() {
+    // Same story, sorting records by a field: ranges::sort would take
+    // a projection, but std::set wants a Compare type. PSI + std::mem_fn
+    // orders a set of records by a data member without a boilerplate
+    // comparator struct.
+
+    // --- With combinators ---
+    {
+        auto by_salary = PSI(std::less<>{}, std::mem_fn(&employee::salary));
+        std::set<employee, decltype(by_salary)> payroll(by_salary);
+        payroll.insert({"alice", 50});
+        payroll.insert({"bob",   80});
+        payroll.insert({"carol", 65});
+        TEST(payroll.begin()->name,  "alice"sv);  // lowest salary first
+        TEST(payroll.rbegin()->name, "bob"sv);    // highest salary last
+    }
+
+    // --- Without combinators ---
+    {
+        auto by_salary = [](const employee& a, const employee& b) {
+            return a.salary < b.salary;
+        };
+        std::set<employee, decltype(by_salary)> payroll(by_salary);
+        payroll.insert({"alice", 50});
+        payroll.insert({"bob",   80});
+        payroll.insert({"carol", 65});
+        TEST(payroll.begin()->name,  "alice"sv);
+        TEST(payroll.rbegin()->name, "bob"sv);
+    }
+}
+
+void example_range_span() {
+    // PHI fuses two reductions over the same input into one combined
+    // result. `avg` above is sum/size; `range_span` is max-min. Pattern
+    // shows up constantly in numerical and statistical code.
+
+    // --- With combinators ---
+    {
+        auto range_span = PHI(std::minus<int>{}, std::ranges::max, std::ranges::min);
+        TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
+    }
+
+    // --- Without combinators ---
+    {
+        auto range_span = [](auto ns) {
+            return std::ranges::max(ns) - std::ranges::min(ns);
+        };
+        TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
+    }
+}
+
+void example_compound_predicate() {
+    // Pointfree compound predicates: combine two unary predicates with
+    // logical_and via PHI, then hand the result straight to a ranges
+    // algorithm or view. No named helper, no captured-state lambda.
+    // The resulting callable is identical from the caller's perspective.
+
+    auto nums = std::vector{-4, -2, -1, 0, 1, 2, 3, 4, 5, 6};
+
+    // --- With combinators ---
+    {
+        auto even_and_positive = PHI(std::logical_and<>{}, is_even, is_positive);
+        TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
+        // PHI predicates plug straight into views::filter unchanged.
+        auto filtered = nums | std::views::filter(even_and_positive);
+        TEST(std::ranges::equal(filtered, std::vector{2, 4, 6}), true);
+    }
+
+    // --- Without combinators ---
+    {
+        auto even_and_positive = [](int n) { return n % 2 == 0 && n > 0; };
+        TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
+        auto filtered = nums | std::views::filter(even_and_positive);
+        TEST(std::ranges::equal(filtered, std::vector{2, 4, 6}), true);
+    }
+}
+
+void example_transform_view() {
+    // B composes two callables point-free.  Passed to views::transform it
+    // chains operations without an intermediate lambda.
+    // B(square, abs)(x) = square(abs(x))
+
+    auto data = std::vector{-3, -2, -1, 0, 1, 2, 3};
+
+    // --- With combinators ---
+    {
+        auto sq = [](auto x) { return x * x; };
+        auto transformed = data | std::views::transform(B(sq, [](auto x) { return std::abs(x); }));
+        TEST(std::ranges::equal(transformed, std::vector{9, 4, 1, 0, 1, 4, 9}), true);
+    }
+
+    // --- Without combinators ---
+    {
+        auto transformed = data | std::views::transform([](int x) { int a = std::abs(x); return a * a; });
+        TEST(std::ranges::equal(transformed, std::vector{9, 4, 1, 0, 1, 4, 9}), true);
+    }
+}
+
+void example_field_predicate() {
+    // S(f, K(n)) builds a unary "compare against constant n" predicate:
+    //   S(less, K(70))(x) = less(x, K(70)(x)) = x < 70
+    // Composing with B pipes it through a field projection to get a
+    // record-level predicate with no boilerplate lambda.
+    // payroll is sorted cheapest-first by the PSI comparator, so
+    // take_while/drop_while partition it cleanly at the salary threshold.
+
+    auto by_salary = PSI(std::less<>{}, std::mem_fn(&employee::salary));
+    std::set<employee, decltype(by_salary)> payroll(by_salary);
+    payroll.insert({"alice", 50});
+    payroll.insert({"bob",   80});
+    payroll.insert({"carol", 65});
+
+    // --- With combinators ---
+    {
+        auto under_budget = B(S(std::less<int>{}, K(70)), std::mem_fn(&employee::salary));
+        auto affordable = payroll | std::views::take_while(under_budget);
+        TEST(std::ranges::distance(affordable), 2);             // alice(50), carol(65)
+        TEST(std::ranges::begin(affordable)->name, "alice"sv);
+        auto over_budget = payroll | std::views::drop_while(under_budget);
+        TEST(std::ranges::begin(over_budget)->name, "bob"sv);
+    }
+
+    // --- Without combinators ---
+    {
+        auto under_budget = [](const employee& e) { return e.salary < 70; };
+        auto affordable = payroll | std::views::take_while(under_budget);
+        TEST(std::ranges::distance(affordable), 2);
+        TEST(std::ranges::begin(affordable)->name, "alice"sv);
+        auto over_budget = payroll | std::views::drop_while(under_budget);
+        TEST(std::ranges::begin(over_budget)->name, "bob"sv);
+    }
+}
+
+void example_projections() {
+    // Ranges algorithms accept a projection (a unary callable) rather than
+    // a full binary comparator.  B composes a transformation with a field
+    // accessor, giving the unary callable algorithms want - no lambda needed.
+    // Compare with the PSI example above: PSI yields a Compare *type* for
+    // containers; a B-composed projection is the cleaner fit for algorithms.
+
+    // Sort by case-insensitive name.
+
+    // --- With combinators ---
+    {
+        auto employees = std::vector<employee>{{"Bob", 80}, {"alice", 50}, {"Carol", 65}};
+        std::ranges::sort(employees, std::less{}, B(string_downcase, std::mem_fn(&employee::name)));
+        TEST(employees.front().name, "alice"sv);
+        TEST(employees.back().name,  "Carol"sv);
+    }
+
+    // --- Without combinators ---
+    {
+        auto employees = std::vector<employee>{{"Bob", 80}, {"alice", 50}, {"Carol", 65}};
+        std::ranges::sort(employees, std::less{},
+            [](const employee& e) { return string_downcase(e.name); });
+        TEST(employees.front().name, "alice"sv);
+        TEST(employees.back().name,  "Carol"sv);
+    }
+
+    // B also works as a projection in non-sort algorithms.
+    // B(ranges::size, mem_fn(&name)) composes the length function with the
+    // name accessor to project each employee down to their name length.
+
+    // --- With combinators ---
+    {
+        auto employees = std::vector<employee>{{"bob", 80}, {"alice", 50}, {"jo", 65}};
+        auto longest = std::ranges::max_element(employees, std::less{},
+            B(std::ranges::size, std::mem_fn(&employee::name)));
+        TEST(longest->name, "alice"sv);   // 5 chars > "bob" (3) > "jo" (2)
+    }
+
+    // --- Without combinators ---
+    {
+        auto employees = std::vector<employee>{{"bob", 80}, {"alice", 50}, {"jo", 65}};
+        auto longest = std::ranges::max_element(employees, std::less{},
+            [](const employee& e) { return e.name.size(); });
+        TEST(longest->name, "alice"sv);
+    }
+}
+
 int main()
 {
     TEST(S(K, K)(42), 42);
@@ -129,124 +365,18 @@ int main()
     constexpr auto square = W(std::multiplies<>{});
     TEST(square(5), 25);
 
-    // ::toupper and ::tolower are not constexpr, so we provide these.
-    constexpr auto ascii_to_upper = [](char c) { return ((c >= 'a') and (c <= 'z')) ? static_cast<char>(c - ('a' - 'A')) : c; };
-    constexpr auto ascii_to_lower = [](char c) { return ((c >= 'A') and (c <= 'Z')) ? static_cast<char>(c + ('a' - 'A')) : c; };
-
-    constexpr auto string_append = [](std::string_view a, std::string_view b) { return std::string(a).append(b); };
-    // I might have used a sv | std::ranges::transform(...) | std::ranges::to<std::string> if available.
-    constexpr auto string_upcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_upper); return s; };
-    constexpr auto string_downcase = [](std::string_view sv) { std::string s{sv}; std::ranges::transform(s, s.begin(), ascii_to_lower); return s; };
     TEST(D(string_append, string_upcase)("hello "sv, "world"sv), "hello WORLD");
     TEST(D2(string_append, string_upcase, string_downcase)("hello "sv, "WORLD"sv), "HELLO world");
 
     // --- Practical examples: where combinators actually earn their keep ---
 
-    // PSI is Haskell's `on`: build a comparator from a projection.
-    // Ranges algorithms take a projection parameter that covers this
-    // for the algorithm case - std::ranges::sort(words, std::less<>{},
-    // string_downcase) works fine. But *containers* - std::set,
-    // std::map, std::priority_queue - take a Compare *type*, not a
-    // projection, and that's where PSI earns its keep: it gives you a
-    // ready-made Compare without writing a boilerplate comparator struct.
-    auto ci_less = PSI(std::less<std::string>{}, string_downcase);
-    std::set<std::string, decltype(ci_less)> words(ci_less);
-    words.insert("banana");
-    words.insert("Apple");
-    words.insert("APPLE");  // dupe of "Apple" under ci_less - not inserted
-    words.insert("cherry");
-    TEST(words.size(), 3uz);
-    TEST(*words.begin(), "Apple"s);  // set ordered case-insensitively
-
-    // Same story, sorting records by a field: ranges::sort would take
-    // a projection, but std::set wants a Compare type. PSI + std::mem_fn
-    // orders a set of records by a data member without a boilerplate
-    // comparator struct.
-    struct employee { std::string_view name; int salary; };
-    auto by_salary = PSI(std::less<>{}, std::mem_fn(&employee::salary));
-    std::set<employee, decltype(by_salary)> payroll(by_salary);
-    payroll.insert({"alice", 50});
-    payroll.insert({"bob",   80});
-    payroll.insert({"carol", 65});
-    TEST(payroll.begin()->name,  "alice"sv);  // lowest salary first
-    TEST(payroll.rbegin()->name, "bob"sv);    // highest salary last
-
-    // PHI fuses two reductions over the same input into one combined
-    // result. `avg` above is sum/size; `range_span` is max-min. Pattern
-    // shows up constantly in numerical and statistical code.
-    constexpr auto range_span = PHI(std::minus<int>{}, std::ranges::max, std::ranges::min);
-    TEST(range_span(std::vector{3, 1, 4, 1, 5, 9, 2, 6}), 8);
-
-    // Pointfree compound predicates: combine two unary predicates with
-    // logical_and via PHI, then hand the result straight to a ranges
-    // algorithm. No named helper, no captured-state lambda.
-    constexpr auto is_even     = [](int n) { return n % 2 == 0; };
-    constexpr auto is_positive = [](int n) { return n > 0; };
-    constexpr auto even_and_positive = PHI(std::logical_and<>{}, is_even, is_positive);
-    TEST(std::ranges::count_if(std::vector{-2, -1, 0, 1, 2, 3, 4}, even_and_positive), 2);
-
-    // --- Ranges views + combinators ---
-
-    // PHI predicates plug straight into views::filter - the same callable
-    // passed to count_if above works unchanged as a filter predicate.
-    {
-        auto nums = std::vector{-4, -2, -1, 0, 1, 2, 3, 4, 5, 6};
-        auto filtered = nums | std::views::filter(even_and_positive);
-        TEST(std::ranges::equal(filtered, std::vector{2, 4, 6}), true);
-    }
-
-    // B composes two callables point-free.  Passed to views::transform it
-    // chains operations without an intermediate lambda.
-    // B(square, abs)(x) = square(abs(x))
-    {
-        auto abs_squared = B(square, abs);
-        auto data = std::vector{-3, -2, -1, 0, 1, 2, 3};
-        auto transformed = data | std::views::transform(abs_squared);
-        TEST(std::ranges::equal(transformed, std::vector{9, 4, 1, 0, 1, 4, 9}), true);
-    }
-
-    // S(f, K(n)) builds a unary "compare against constant n" predicate:
-    //   S(less, K(70))(x) = less(x, K(70)(x)) = x < 70
-    // Composing with B pipes it through a field projection to get a
-    // record-level predicate with no boilerplate lambda.
-    // payroll is already sorted cheapest-first by the PSI comparator above,
-    // so take_while/drop_while partition it cleanly at the salary threshold.
-    {
-        auto under_budget = B(S(std::less<int>{}, K(70)),
-                              std::mem_fn(&employee::salary));
-
-        auto affordable = payroll | std::views::take_while(under_budget);
-        TEST(std::ranges::distance(affordable), 2);             // alice(50), carol(65)
-        TEST(std::ranges::begin(affordable)->name, "alice"sv);
-
-        auto over_budget = payroll | std::views::drop_while(under_budget);
-        TEST(std::ranges::begin(over_budget)->name, "bob"sv);
-    }
-
-    // --- Combinators as projection parameters ---
-
-    // Ranges algorithms accept a projection (a unary callable) rather than
-    // a full binary comparator.  B composes a transformation with a field
-    // accessor, giving the unary callable algorithms want - no lambda needed.
-    // Compare with the PSI example above: PSI yields a Compare *type* for
-    // containers; a B-composed projection is the cleaner fit for algorithms.
-    {
-        auto employees = std::vector<employee>{{"Bob", 80}, {"alice", 50}, {"Carol", 65}};
-        auto ci_name = B(string_downcase, std::mem_fn(&employee::name));
-        std::ranges::sort(employees, std::less{}, ci_name);
-        TEST(employees.front().name, "alice"sv);
-        TEST(employees.back().name,  "Carol"sv);
-    }
-
-    // B also works as a projection in non-sort algorithms.
-    // B(ranges::size, mem_fn(name)) composes the length function with the
-    // name accessor to project each employee down to their name length.
-    {
-        auto employees = std::vector<employee>{{"bob", 80}, {"alice", 50}, {"jo", 65}};
-        auto name_len = B(std::ranges::size, std::mem_fn(&employee::name));
-        auto longest = std::ranges::max_element(employees, std::less{}, name_len);
-        TEST(longest->name, "alice"sv);   // 5 chars > "bob" (3) > "jo" (2)
-    }
+    example_ci_set();
+    example_sort_by_field();
+    example_range_span();
+    example_compound_predicate();
+    example_transform_view();
+    example_field_predicate();
+    example_projections();
 
     // Compile-time evaluation checks. Each STATIC_TEST forces the expression
     // into a constant-evaluated context; if it fails to compile, the chain
